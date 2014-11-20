@@ -7,6 +7,8 @@ import sys
 from email import message_from_file
 from email.header import decode_header
 import csv
+import chardet
+from operator import itemgetter
 
 def extract_parts(msg, i):
     files = []
@@ -18,7 +20,18 @@ def extract_parts(msg, i):
         if not filename:
             # Is an email content
             if part.get_content_type() == 'text/plain':
-                content = part.get_payload(decode=True).decode('utf-8')
+                content_bs = part.get_payload(decode=True)
+                charset = part.get_charset()
+                if not charset:
+                    # In most of the cases it's utf-8. However... Ouck Futlook.
+                    guess_result = chardet.detect(content_bs)
+                    charset = guess_result['encoding']
+                    print('* Content: No charset found. '
+                          'Guessed to be %(encoding)s, '
+                          'confidence: %(confidence)s' % guess_result)
+                else:
+                    print('*Content: charset is %s' % charset)
+                content = content_bs.decode(charset)
                 i += 1
         else:
             files.append(('%06d-%s' % (i, filename),
